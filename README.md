@@ -5,7 +5,7 @@
 Extensive global habitat degradation  and the climate crisis are causing the ongoing so-called sixth  global mass extinction. Marine communities will not be spared from this catastrophic loss of biodiversity and the resilience of marine communities following large-scale disturbances or extinction events is mediated by the life-history traits of the species and their interplay within the communities. The presence and abundance of traits in communities provide proxies of function, but whether the breakdown of their associations with species loss can delineate functional loss remains unclear. Here, we propose that relationships between traits within trait networks provide unique perspectives on the importance of specific traits, trait combinations, and their role to support the stability of communities, whilst allowing quantification of the vulnerability of both past deep time and present-day marine communities.
 
 # Trait Networks: Quantifying Marine Community Resilience and Extinction Recovery
-Code for the Two examples of Trait networks in ###Clay, C.G., Dunhill, A.M., Reimer, J.D. and Beger, M. in-prep. Trait Networks: Quantifying Marine Community Resilience and Extinction Recovery.
+Code for the Two examples of Trait networks in ### Clay, C.G., Dunhill, A.M., Reimer, J.D. and Beger, M. in-prep. Trait Networks: Quantifying Marine Community Resilience and Extinction Recovery.
 
 ### PearsonsCorrelaions_JP_Fish.R 
 Code for Example 1 – Trait networks for modern fish communities: Shifts in the trait networks of reef-associated fish along a Tropical to Temperate gradient.
