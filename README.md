@@ -12,38 +12,6 @@ Code for Example 1 – Trait networks for modern fish communities: Shifts in the
 ### PearsonsCorrelations_EE.R
 Code for Example 2 – Trait networks for fossil communties Shifts in the trait networks of marine communities during an extinction event. 
 
-
-## Getting Started
-
-### Dependencies
-
-* Packages 
-* library(dplyr)
-* library(tidyr)
-* library(Hmisc)
-* library(corrplot)
-* library(tidyverse)
-* library(ggplot2)
-* library(sqldf)
-* library(cooccur)
-* library(reshape2)
-* library(circleplot)
-* library(circlize)
-* library(graph4lg)
-* library(igraph)
-
-### Installing
-
-* Files available from: 
-
-### Executing program
-
-* How to run the program
-* Step-by-step bullets
-```
-code blocks for commands
-```
-
 ## Authors
 
 Contributors names and contact info
