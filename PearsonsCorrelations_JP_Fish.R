@@ -8,32 +8,30 @@ library(ggplot2)
 library(sqldf)
 library(cooccur)
 library(reshape2)
-library(circleplot)
 library(circlize)
 library(graph4lg)
 library(igraph)
 
 
 #### Data #### 
-CWM <- read.csv("Data/CWM_JP_Fish.csv")
-CWM <- CWM %>% rename(Collection_name = X)
+CWM <- read.csv("Data/CWM_JPFish_Biomass_TropTemp.csv")
+CWM <- CWM %>% rename(Site = X)
 
 #organise and rename
-CWM <- CWM %>% relocate(Cluster, .before = Collection_name)
-CWM <- CWM %>% column_to_rownames(., var = 'Collection_name')
+CWM <- CWM %>% relocate(Cluster, .before = Site)
+CWM <- CWM %>% column_to_rownames(., var = 'Site')
 colnames(CWM) <- c("Cluster", "ML_Large", "ML_Medium", "ML_Small",
                    "ML_V.Small", "PLD_Long", "PLD_Medium", "PLD_Short",
                    "PLD_V.Long", "T_Corrallivore", "T_Detritivore",
                    "T_Herbivore", "T_Omnivore", "T_Piscivore",
                    "T_Planktivore", "T_Predator", "P_Benthic",
-                   "P_CnidarianA", "P_Demersal", "P_EchinodermA",
+                   "P_AnthozoanA", "P_Demersal", 
                    "P_Pelagic", "P_ReefPelagic", "P_SandA", "P_SubBenthic",
-                   "P_UpperBenthic", "R_Brooders", "P_Demersal",
-                   "P_livebearers", "P_Nesters", "P_Scatterers")
+                   "P_UpperBenthic", "R_Brooders", "R_Demersal",
+                   "R_livebearers", "R_Nesters", "R_Scatterers")
 
 ##### Make a counter file for regions for looping:  ----
-countR <- data.frame(Cluster = c("Tropical", "Warm Subtropical", "Cold Subtropical", 
-                             "Temperate"))
+countR <- data.frame(Cluster = c("Tropical", "Temperate"))
 
 
 ##### loop through Regions, making eveything ----
@@ -52,19 +50,19 @@ for (i in 1:nrow(countR)) { #circle through the Regions
 
   ## probtable: write results for probability of pairwise co-occurrence to output table
   CWM_prob <- CWM_Cor$P
-  out_prob <- CWM_prob; csvfile<-paste0("Results/",Era,"/outprob_",Era,".csv"); write.csv(out_prob, csvfile, row.names = F) 
+  out_prob <- CWM_prob; csvfile<-paste0("Results/",Cluster,"/outprob_",Cluster,".csv"); write.csv(out_prob, csvfile, row.names = F) 
   
   #binarise the prob table, < 0.05 = 1, >0.05 = 0
   CWM_prob <- ifelse(CWM_prob < 0.05, 1, 0)
-  out_prob_s <- CWM_prob; csvfile<-paste0("Results/",Era,"/outprob_s",Era,".csv"); write.csv(out_prob_s, csvfile, row.names = F)
+  out_prob_s <- CWM_prob; csvfile<-paste0("Results/",Cluster,"/outprob_s",Cluster,".csv"); write.csv(out_prob_s, csvfile, row.names = F)
   
   #Get correlation matrix
   CWM_eff <- CWM_Cor$r
-  effectM = as.matrix(CWM_eff); csvfile<-paste0("Results/",Era,"/outeff_",Era,".csv"); write.csv(effectM, csvfile, row.names = F) #Get effects table
+  effectM = as.matrix(CWM_eff); csvfile<-paste0("Results/",Cluster,"/outeff_",Cluster,".csv"); write.csv(effectM, csvfile, row.names = F) #Get effects table
   
   ### Generate a matrix where links are significant
   SignMatrix <- out_prob_s * effectM
-  csvfile=paste0("Results/",Era,"/SignMatrix_",Era,".csv"); write.csv(SignMatrix, csvfile, row.names=F)
+  csvfile=paste0("Results/",Cluster,"/SignMatrix_",Cluster,".csv"); write.csv(SignMatrix, csvfile, row.names=F)
   
   #change na and Nan to 0's 
   SignMatrix[is.na(SignMatrix)] <- 0
@@ -92,7 +90,7 @@ for (i in 1:nrow(countR)) { #circle through the Regions
   # Trait level modularity
   t_metrix = cbind(Trait = vertex_attr(TGraph, "name"),t_Degree,t_DegCentr,tModule)
   t_metrix[is.na(t_metrix)] <- 0
-  csvfile=paste0("Results/",Era,"/t_metrix_2_",Era,".csv"); write.csv(t_metrix, csvfile, row.names = F)
+  csvfile=paste0("Results/",Cluster,"/t_metrix_2_",Cluster,".csv"); write.csv(t_metrix, csvfile, row.names = F)
   
   ### Network-wide metrics
   DegCents = centr_clo(TGraph, mode = "all")$centralization
@@ -103,28 +101,36 @@ for (i in 1:nrow(countR)) { #circle through the Regions
   NetModularity = modularity(TGraph,membership(WT_partition))
   
   # Region level summary table (DegCents, BetwCentr, EigCentr, NoModule, NetModularity) 
-  Reg_metrix[nrow(Reg_metrix)+1,] = c(Era, DegCents, BetwCentr, EigCentr, EdgeDen, NoModule, NetModularity)
+  Reg_metrix[nrow(Reg_metrix)+1,] = c(Cluster, DegCents, BetwCentr, EigCentr, EdgeDen, NoModule, NetModularity)
   
   #Plot and save
-  V(TGraph)$color <- ifelse(V(TGraph)$name == "MaxLength_Large", "dodgerblue4", ifelse(V(TGraph)$name == "MaxLength_Medium", "dodgerblue3", 
-                                                                           ifelse(V(TGraph)$name == "MaxLegnth_Small", "dodgerblue1", 
-                                                                                  ifelse(V(TGraph)$name == "MaxLength_V.Small", "deepskyblue2", 
-                                                                                         ifelse(V(TGraph)$name == "PLD_long", "aquamarine3",
+  V(TGraph)$color <- ifelse(V(TGraph)$name == "ML_Large", "dodgerblue4", ifelse(V(TGraph)$name == "ML_Medium", "dodgerblue3", 
+                                                                           ifelse(V(TGraph)$name == "ML_Small", "dodgerblue1", 
+                                                                                  ifelse(V(TGraph)$name == "ML_V.Small", "deepskyblue2", 
+                                                                                         ifelse(V(TGraph)$name == "PLD_Long", "aquamarine3",
                                                                                                 ifelse(V(TGraph)$name == "PLD_Medium", "aquamarine4",
                                                                                                        ifelse(V(TGraph)$name == "PLD_Short", "aquamarine2",
                                                                                                               ifelse(V(TGraph)$name == "PLD_V.Long", "darkslategray3",
-                                                                                                                     ifelse(V(TGraph)$name == "Trophic_Corrallivore", "magenta4",
-                                                                                                                            ifelse(V(TGraph)$name == "Trophic_Detritivore", "magenta3",
-                                                                                                                                   ifelse(V(TGraph)$name == "Trophic_Herbivore", "mediumpurple",
-                                                                                                                                          ifelse(V(TGraph)$name == "Trophic_Omnivore", "mediumorchid",
-                                                                                                                                                 ifelse(V(TGraph)$name == "Trophic_Piscivore", "honeydew4",
-                                                                                                                                                        ifelse(V(TGraph)$name == "Trophic_Planktivore", "honeydew2",
-                                                                                                                                                               ifelse(V(TGraph)$name == "Trophic_Predator", "mistyrose2",
-                                                                                                                                                                      ifelse(V(TGraph)$name == "Position_Benthic", "mistyrose",
-                                                                                                                                                                             ifelse(V(TGraph)$name =="Position_CnidarianAssociated", "darkorange3",
-                                                                                                                                                                                    ifelse(V(TGraph)$name =="Position_Demersal", "darkorange",
-                                                                                                                                                                                           ifelse(V(TGraph)$name == "B_intra", "gold2",
-                                                                                                                                                                                                  ifelse(V(TGraph)$name == "B_none", "darkgoldenrod1","red"))))))))))))))))))))
+                                                                                                                     ifelse(V(TGraph)$name == "T_Corrallivore", "magenta4",
+                                                                                                                            ifelse(V(TGraph)$name == "T_Detritivore", "magenta3",
+                                                                                                                                   ifelse(V(TGraph)$name == "T_Herbivore", "mediumpurple",
+                                                                                                                                          ifelse(V(TGraph)$name == "T_Omnivore", "mediumorchid",
+                                                                                                                                                 ifelse(V(TGraph)$name == "T_Piscivore", "honeydew4",
+                                                                                                                                                        ifelse(V(TGraph)$name == "T_Planktivore", "honeydew2",
+                                                                                                                                                               ifelse(V(TGraph)$name == "T_Predator", "mistyrose2",
+                                                                                                                                                                      ifelse(V(TGraph)$name == "P_Benthic", "mistyrose",
+                                                                                                                                                                             ifelse(V(TGraph)$name =="P_AnthozoanA", "darkorange3",
+                                                                                                                                                                                    ifelse(V(TGraph)$name =="P_Demersal", "darkorange",
+                                                                                                                                                                                           ifelse(V(TGraph)$name == "P_Pelagic", "gold2",
+                                                                                                                                                                                                  ifelse(V(TGraph)$name == "P_ReefPelagic", "goldenrod2",
+                                                                                                                                                                                                         ifelse(V(TGraph)$name == "P_SandA", "darkgoldenrod3",
+                                                                                                                                                                                                               ifelse(V(TGraph)$name == "P_SubBenthic", "darkgoldenrod4",
+                                                                                                                                                                                                                     ifelse(V(TGraph)$name == "P_UpperBenthic", "gold4",
+                                                                                                                                                                                                                            ifelse(V(TGraph)$name == "R_Brooders", "coral3",
+                                                                                                                                                                                                                                   ifelse(V(TGraph)$name == "R_livebearers", "coral",
+                                                                                                                                                                                                                                          ifelse(V(TGraph)$name == "R_Nesters", "coral4",
+                                                                                                                                                                                                                                                 ifelse(V(TGraph)$name == "R_Scatterers", "violetred2",
+                                                                                                                                                                                                                                                        ifelse(V(TGraph)$name == "R_Demersal", "violetred4","red"))))))))))))))))))))))))))))
   
 
   
@@ -142,7 +148,7 @@ for (i in 1:nrow(countR)) { #circle through the Regions
   layout = layout_with_kk(TGraph)
   
   ##to save plot 
-  pdf(file=paste0("Results/Graphs/",Era,".pdf"))
+  pdf(file=paste0("Results/Graphs/",Cluster,".pdf"))
   plot(TGraph, 
        edge.width=2,
        edge.color="black",
@@ -161,4 +167,4 @@ for (i in 1:nrow(countR)) { #circle through the Regions
 
 
 #save the Cooccurs and Metrix from the entire loop
-write.csv(Reg_metrix, 'Results/Eocene_Oligocene_Reg_metrix_22_03_23.csv')
+write.csv(Reg_metrix, 'Results/JPFish_TropTemp_Reg_metrix_13_06_24.csv')

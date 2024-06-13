@@ -8,20 +8,30 @@ library(ggplot2)
 library(sqldf)
 library(cooccur)
 library(reshape2)
-library(circleplot)
 library(circlize)
 library(graph4lg)
 library(igraph)
+library(psych)
 
-# Read and preprocess data
-CWM <- read.csv("Data/CWM_JP_Fish_Pres_Ab.csv") %>% rename(Site = X)
-CWM <- CWM %>% relocate(Clusters, .before = Site) %>% column_to_rownames(., var = 'Site')
-colnames(CWM) <- c("Cluster", "ML_L", "ML_M", "ML_S", "ML_VS", "PLD_L", "PLD_M", "PLD_S", "PLD_VL", "T_C", "T_D", "T_H", "T_O", "T_Pis", "T_Pla", "T_Pre", "P_B", "P_CA", "P_D", "P_EA", "P_P", "P_RP", "P_SA", "P_SB", "P_UB", "R_B", "R_D", "R_LB", "R_N", "R_S")
-CWM$Cluster[CWM$Cluster == "ColdTropical"] <- "WarmSubtropical"
-CWM$Cluster[CWM$Cluster == "Subtropical"] <- "ColdSubtropical"
+#### Data #### 
+CWM <- read.csv("Data/CWM_JPFish_Biomass_TropTemp.csv")
+CWM <- CWM %>% rename(Site = X)
 
-# Create a data frame for regions
-countR <- data.frame(Cluster = c("Tropical", "WarmSubtropical", "ColdSubtropical", "Temperate"))
+#organise and rename
+CWM <- CWM %>% relocate(Cluster, .before = Site)
+CWM <- CWM %>% column_to_rownames(., var = 'Site')
+colnames(CWM) <- c("Cluster", "ML_Large", "ML_Medium", "ML_Small",
+                   "ML_V.Small", "PLD_Long", "PLD_Medium", "PLD_Short",
+                   "PLD_V.Long", "T_Corrallivore", "T_Detritivore",
+                   "T_Herbivore", "T_Omnivore", "T_Piscivore",
+                   "T_Planktivore", "T_Predator", "P_Benthic",
+                   "P_AnthozoanA", "P_Demersal", 
+                   "P_Pelagic", "P_ReefPelagic", "P_SandA", "P_SubBenthic",
+                   "P_UpperBenthic", "R_Brooders", "R_Demersal",
+                   "R_livebearers", "R_Nesters", "R_Scatterers")
+
+##### Make a counter file for regions for looping:  ----
+countR <- data.frame(Cluster = c("Tropical", "Temperate"))
 
 # Initialize the result data frame
 all_metrics <- list()
@@ -68,29 +78,68 @@ for (i in 1:nrow(countR)) {
   all_metrics[[Cluster]] <- bootstrap_metrics
 }
 
-# Calculate mean and standard deviation for each region and metric
-mean_sd_metrics <- data.frame()
+# Combine metrics from all_metrics into a single data frame with Cluster indicator
+combined_metrics <- NULL
+
 for (cluster in names(all_metrics)) {
   cluster_metrics <- all_metrics[[cluster]]
-  means <- colMeans(cluster_metrics)
-  sds <- apply(cluster_metrics, 2, sd)
-  mean_sd_metrics <- rbind(mean_sd_metrics, cbind(Cluster=cluster, t(means), t(sds)))
-}
-colnames(mean_sd_metrics) <- c("Cluster", "Mean_DegCents", "Mean_BetwCentr", "Mean_EigCentr", "Mean_EdgeDen", "Mean_NoModule", "Mean_NetModularity", "SD_DegCents", "SD_BetwCentr", "SD_EigCentr", "SD_EdgeDen", "SD_NoModule", "SD_NetModularity")
-
-# Save mean and SD results
-write.csv(mean_sd_metrics, 'Results/Eocene_Oligocene_Mean_SD_22_03_23.csv')
-
-# Perform t-tests between tropical and temperate groups for each metric
-t_test_results <- data.frame(Metric=character(), p_value=numeric(), stringsAsFactors=FALSE)
-metrics <- colnames(all_metrics[[1]])
-
-for (metric in metrics) {
-  tropical_values <- all_metrics[["Tropical"]][[metric]]
-  temperate_values <- all_metrics[["Temperate"]][[metric]]
-  t_test <- t.test(tropical_values, temperate_values)
-  t_test_results <- rbind(t_test_results, data.frame(Metric=metric, p_value=t_test$p.value))
+  cluster_df <- as.data.frame(cluster_metrics)
+  cluster_df$Cluster <- cluster
+  combined_metrics <- rbind(combined_metrics, cluster_df)
 }
 
-# Save t-test results
-write.csv(t_test_results, 'Results/Eocene_Oligocene_T_Test_Results_22_03_23.csv')
+combined_metrics <- combined_metrics %>% select(Cluster, everything())
+
+# Save combined metrics to CSV
+write.csv(combined_metrics, 'Results/JP_Fish_Combined_Metrics_Tropical_Temperate.csv', row.names = FALSE)
+
+# Group by Cluster and calculate metrics
+metrics_summary <- combined_metrics %>%
+  group_by(Cluster) %>%
+  summarise(across(everything(), list(
+    Mean = mean, 
+    SD = sd, 
+    Median = median,
+    IQR = IQR
+  )))
+
+# Flatten the grouped data frame for easier viewing
+metrics_summary <- as.data.frame(metrics_summary)
+
+# Save metrics summary to CSV
+write.csv(metrics_summary, 'Results/JP_Fish_Metrics_Summary_Tropical_Temperate.csv', row.names = FALSE)
+
+#Normality
+shapiro.test(combined_metrics$DegCents)
+shapiro.test(combined_metrics$BetwCentr)
+shapiro.test(combined_metrics$EigCentr)
+shapiro.test(combined_metrics$EdgeDen)
+shapiro.test(combined_metrics$NoModule)
+shapiro.test(combined_metrics$NetModularity)
+#all non-noramal 
+
+
+# Initialize an empty data frame to store results
+wilcox_test_results <- data.frame(Metric = character(), W_statistic = numeric(), p_value = numeric(), stringsAsFactors = FALSE)
+
+# Loop through each numeric metric
+for (metric in colnames(combined_metrics)[sapply(combined_metrics, is.numeric)]) {
+  # Perform Wilcoxon rank sum test
+  wilcox_result <- wilcox.test(as.formula(paste(metric, "~ Cluster")), data = combined_metrics, exact = FALSE)
+  
+  # Extract W statistic, p-value, and metric name
+  metric_name <- metric
+  W_statistic <- wilcox_result$statistic
+  p_value <- wilcox_result$p.value
+  
+  # Round p-value to 3 decimal places
+  p_value <- round(p_value, digits = 3)
+  
+  # Append results to wilcox_test_results data frame
+  wilcox_test_results <- rbind(wilcox_test_results, data.frame(Metric = metric_name, W_statistic = W_statistic, p_value = p_value))
+}
+
+# Save Wilcoxon test results to CSV
+write.csv(wilcox_test_results, 'Results/JpFish_Wilcoxon_Test_Results.csv', row.names = FALSE)
+
+
