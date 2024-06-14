@@ -1,17 +1,10 @@
-#Packages 
-library(dplyr)
-library(tidyr)
-library(Hmisc)
+# Load necessary libraries
 library(corrplot)
-library(tidyverse)
-library(ggplot2)
-library(sqldf)
+library(tidyverse)  # Includes dplyr and other packages
 library(cooccur)
-library(reshape2)
 library(circlize)
-library(graph4lg)
 library(igraph)
-
+library(Hmisc)
 
 #### Data #### 
 CWM <- read.csv("Data/CWM_JPFish_Biomass_TropTemp.csv")
